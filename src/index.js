@@ -14,8 +14,8 @@ const editDescription = profileForm.elements.description;
 const newCardButton = document.querySelector(".profile__add-button");
 const newCardWindow = document.querySelector(".popup_type_new-card");
 const cardForm = document.forms.namedItem("new-place");
-const popups = document.querySelectorAll(".popup");
 const pictureWindow = document.querySelector(".popup_type_image");
+const popups = document.querySelectorAll(".popup");
 
 function handleProfileSubmit(evt, profileTitle, profileDescription) {
   evt.preventDefault();
