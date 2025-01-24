@@ -2,12 +2,22 @@ import "./pages/index.css";
 import { initialCards } from "./scripts/cards.js";
 import { openWindow, closeWindow } from "./components/modal.js";
 import { createCard } from "./components/card.js";
-
+import { enableValidation, clearValidation } from "./components/validation.js";
+import {
+  getInitialCards,
+  getProfile,
+  updateProfile,
+  addCard,
+  deleteCard,
+  toggleLike,
+  updateAvatar,
+} from "./components/api.js";
 const placesList = document.querySelector(".places__list");
 const editProfileButton = document.querySelector(".profile__edit-button");
 const editProfileWindow = document.querySelector(".popup_type_edit");
 const profileTitle = document.querySelector(".profile__title");
 const profileDescription = document.querySelector(".profile__description");
+const profileAvatar = document.querySelector(".profile__image");
 const profileForm = document.forms.namedItem("edit-profile");
 const editName = profileForm.elements.name;
 const editDescription = profileForm.elements.description;
@@ -16,19 +26,106 @@ const newCardWindow = document.querySelector(".popup_type_new-card");
 const cardForm = document.forms.namedItem("new-place");
 const pictureWindow = document.querySelector(".popup_type_image");
 const popups = document.querySelectorAll(".popup");
+const cardDeleteWindow = document.querySelector(".popup_type_delete");
+const popupDeleteButton = document.querySelector(".popup__button-delete");
+const editAvatarWindow = document.querySelector(".popup_type_avatar");
+const avatarForm = document.forms.namedItem("new-avatar");
+const selectors = {
+  formSelector: ".popup__form",
+  inputSelector: ".popup__input",
+  submitButtonSelector: ".popup__button",
+  inactiveButtonClass: "popup__button_disabled",
+  inputErrorClass: "popup__input_type_error",
+  errorClass: "popup__error_visible",
+};
+
+function handleAvatarSubmit(evt) {
+  evt.preventDefault();
+  const old_text = evt.submitter.textContent;
+  evt.submitter.textContent = "Сохранение...";
+  updateAvatar({
+    avatar: evt.srcElement["link-avatar"].value,
+  })
+    .then((res) => {
+      profileAvatar.style.backgroundImage = `url(${res.avatar})`;
+      evt.submitter.textContent = old_text;
+      evt.srcElement.reset();
+      closeWindow(editAvatarWindow);
+      clearValidation(avatarForm, selectors);
+    })
+    .catch((err) => {
+      alert(err);
+      evt.submitter.textContent = old_text;
+    });
+}
+
+avatarForm.addEventListener("submit", function (evt) {
+  handleAvatarSubmit(evt);
+});
+
+profileAvatar.addEventListener("click", function () {
+  openWindow(editAvatarWindow);
+});
+
+const handleCardDelete = (evt, cardId) => {
+  openWindow(cardDeleteWindow);
+  popupDeleteButton.onclick = () => {
+    popupDeleteButton.disabled = true;
+    popupDeleteButton.classList.add(selectors.inactiveButtonClass);
+    deleteCard(cardId)
+      .then(() => {
+        evt.srcElement.closest(".places__item").remove();
+        closeWindow(cardDeleteWindow);
+        popupDeleteButton.disabled = false;
+        popupDeleteButton.classList.remove(selectors.inactiveButtonClass);
+      })
+      .catch((err) => {
+        popupDeleteButton.disabled = false;
+        popupDeleteButton.classList.remove(selectors.inactiveButtonClass);
+        alert(err);
+      });
+  };
+};
+
+function handleLike(evt, card) {
+  toggleLike(
+    card._id,
+    evt.target.classList.contains("card__like-button_is-active")
+  )
+    .then((res) => {
+      evt.target.parentElement.querySelector(".card__like-count").textContent =
+        res.likes.length;
+      evt.target.classList.toggle("card__like-button_is-active");
+    })
+    .catch((err) => alert(err));
+}
 
 function handleProfileSubmit(evt, profileTitle, profileDescription) {
   evt.preventDefault();
-  profileTitle.textContent = evt.srcElement.name.value;
-  profileDescription.textContent = evt.srcElement.description.value;
-  evt.srcElement.reset();
-  closeWindow(editProfileWindow);
+  const old_text = evt.submitter.textContent;
+  evt.submitter.textContent = "Сохранение...";
+  updateProfile({
+    name: evt.srcElement.name.value,
+    about: evt.srcElement.description.value,
+  })
+    .then((res) => {
+      profileTitle.textContent = res.name;
+      profileDescription.textContent = res.about;
+      evt.submitter.textContent = old_text;
+      evt.srcElement.reset();
+      closeWindow(editProfileWindow);
+    })
+    .catch((err) => {
+      alert(err);
+      evt.submitter.textContent = old_text;
+    });
 }
 
 editProfileButton.addEventListener("click", function () {
   editName.value = profileTitle.textContent;
   editDescription.value = profileDescription.textContent;
   openWindow(editProfileWindow);
+  clearValidation(profileForm, selectors);
 });
 
 newCardButton.addEventListener("click", function () {
@@ -51,19 +148,28 @@ popups.forEach((popup) => {
   });
 });
 
-for (let itm of initialCards) {
-  placesList.append(createCard(itm, popupImage));
-}
-
 function handleCardSubmit(evt, placesList) {
   evt.preventDefault();
+  const old_text = evt.submitter.textContent;
+  evt.submitter.textContent = "Сохранение...";
   const card = {
     name: evt.srcElement.elements["place-name"].value,
     link: evt.srcElement.elements["link"].value,
   };
-  placesList.prepend(createCard(card, popupImage));
-  closeWindow(newCardWindow);
-  evt.srcElement.reset();
+  addCard(card)
+    .then((res) => {
+      placesList.prepend(
+        createCard(res.owner._id, res, popupImage, handleCardDelete, handleLike)
+      );
+      evt.submitter.textContent = old_text;
+      closeWindow(newCardWindow);
+      evt.srcElement.reset();
+      clearValidation(cardForm, selectors);
+    })
+    .catch((err) => {
+      alert(err);
+      evt.submitter.textContent = old_text;
+    });
 }
 
 profileForm.addEventListener("submit", function (evt) {
@@ -73,3 +179,26 @@ profileForm.addEventListener("submit", function (evt) {
 cardForm.addEventListener("submit", function (evt) {
   handleCardSubmit(evt, placesList);
 });
+
+enableValidation(selectors);
+
+Promise.all([getProfile(), getInitialCards()])
+  .then(([profile, cards]) => {
+    profileTitle.textContent = profile.name;
+    profileDescription.textContent = profile.about;
+    profileAvatar.style.backgroundImage = `url(${profile.avatar})`;
+
+    for (let itm of cards) {
+      placesList.append(
+        createCard(profile._id, itm, popupImage, handleCardDelete, handleLike)
+      );
+    }
+  })
+  .catch((err) => alert(err));
+/*
+{
+  name: 'Marie Skłodowska Curie',
+  about: 'Physicist and Chemist'
+}
+
+*/
