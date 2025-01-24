@@ -30,6 +30,7 @@ const cardDeleteWindow = document.querySelector(".popup_type_delete");
 const popupDeleteButton = document.querySelector(".popup__button-delete");
 const editAvatarWindow = document.querySelector(".popup_type_avatar");
 const avatarForm = document.forms.namedItem("new-avatar");
+const popupImg = pictureWindow.querySelector(".popup__image");
 const selectors = {
   formSelector: ".popup__form",
   inputSelector: ".popup__input",
@@ -41,69 +42,67 @@ const selectors = {
 
 function handleAvatarSubmit(evt) {
   evt.preventDefault();
+
+  const btn = evt.srcElement.querySelector(selectors.submitButtonSelector);
   const old_text = evt.submitter.textContent;
-  evt.submitter.textContent = "Сохранение...";
+  btn.textContent = "Сохранение...";
   updateAvatar({
     avatar: evt.srcElement["link-avatar"].value,
   })
     .then((res) => {
       profileAvatar.style.backgroundImage = `url(${res.avatar})`;
-      evt.submitter.textContent = old_text;
       evt.srcElement.reset();
       closeWindow(editAvatarWindow);
-      clearValidation(avatarForm, selectors);
     })
     .catch((err) => {
       alert(err);
-      evt.submitter.textContent = old_text;
-    });
+    })
+    .finally((btn.textContent = old_text));
 }
 
 avatarForm.addEventListener("submit", function (evt) {
   handleAvatarSubmit(evt);
+  clearValidation(avatarForm, selectors);
 });
 
 profileAvatar.addEventListener("click", function () {
   openWindow(editAvatarWindow);
 });
 
-const handleCardDelete = (evt, cardId) => {
+const handleCardDelete = (evt, cardId, removeCard) => {
   openWindow(cardDeleteWindow);
   popupDeleteButton.onclick = () => {
     popupDeleteButton.disabled = true;
     popupDeleteButton.classList.add(selectors.inactiveButtonClass);
     deleteCard(cardId)
       .then(() => {
-        evt.srcElement.closest(".places__item").remove();
+        removeCard(evt);
         closeWindow(cardDeleteWindow);
-        popupDeleteButton.disabled = false;
-        popupDeleteButton.classList.remove(selectors.inactiveButtonClass);
       })
       .catch((err) => {
+        alert(err);
+      })
+      .finally(() => {
         popupDeleteButton.disabled = false;
         popupDeleteButton.classList.remove(selectors.inactiveButtonClass);
-        alert(err);
       });
   };
 };
 
-function handleLike(evt, card) {
-  toggleLike(
-    card._id,
-    evt.target.classList.contains("card__like-button_is-active")
-  )
+function handleLike(evt, isLiked, refreshLike, card) {
+  toggleLike(card._id, isLiked)
     .then((res) => {
-      evt.target.parentElement.querySelector(".card__like-count").textContent =
-        res.likes.length;
-      evt.target.classList.toggle("card__like-button_is-active");
+      refreshLike(evt, res);
     })
     .catch((err) => alert(err));
 }
 
 function handleProfileSubmit(evt, profileTitle, profileDescription) {
   evt.preventDefault();
-  const old_text = evt.submitter.textContent;
-  evt.submitter.textContent = "Сохранение...";
+
+  const btn = evt.srcElement.querySelector(selectors.submitButtonSelector);
+  const old_text = btn.textContent;
+  btn.textContent = "Сохранение...";
   updateProfile({
     name: evt.srcElement.name.value,
     about: evt.srcElement.description.value,
@@ -111,14 +110,13 @@ function handleProfileSubmit(evt, profileTitle, profileDescription) {
     .then((res) => {
       profileTitle.textContent = res.name;
       profileDescription.textContent = res.about;
-      evt.submitter.textContent = old_text;
       evt.srcElement.reset();
       closeWindow(editProfileWindow);
     })
     .catch((err) => {
       alert(err);
-      evt.submitter.textContent = old_text;
-    });
+    })
+    .finally((btn.textContent = old_text));
 }
 
 editProfileButton.addEventListener("click", function () {
@@ -132,12 +130,9 @@ newCardButton.addEventListener("click", function () {
   openWindow(newCardWindow);
 });
 
-function popupImage(evt) {
-  pictureWindow
-    .querySelector(".popup__image")
-    .setAttribute("src", evt.target.getAttribute("src"));
-  pictureWindow.querySelector(".popup__caption").textContent =
-    evt.target.parentNode.querySelector(".card__title").textContent;
+function popupImage(name, link) {
+  popupImg.setAttribute("src", link);
+  pictureWindow.querySelector(".popup__caption").textContent = name;
   openWindow(pictureWindow);
 }
 
@@ -150,8 +145,9 @@ popups.forEach((popup) => {
 
 function handleCardSubmit(evt, placesList) {
   evt.preventDefault();
-  const old_text = evt.submitter.textContent;
-  evt.submitter.textContent = "Сохранение...";
+  const btn = evt.srcElement.querySelector(selectors.submitButtonSelector);
+  const old_text = btn.textContent;
+  btn.textContent = "Сохранение...";
   const card = {
     name: evt.srcElement.elements["place-name"].value,
     link: evt.srcElement.elements["link"].value,
@@ -161,15 +157,14 @@ function handleCardSubmit(evt, placesList) {
       placesList.prepend(
         createCard(res.owner._id, res, popupImage, handleCardDelete, handleLike)
       );
-      evt.submitter.textContent = old_text;
       closeWindow(newCardWindow);
       evt.srcElement.reset();
       clearValidation(cardForm, selectors);
     })
     .catch((err) => {
       alert(err);
-      evt.submitter.textContent = old_text;
-    });
+    })
+    .finally((btn.textContent = old_text));
 }
 
 profileForm.addEventListener("submit", function (evt) {

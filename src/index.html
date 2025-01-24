@@ -69,7 +69,7 @@
         <h3 class="popup__title">Новое место</h3>
         <form class="popup__form" name="new-place">
           <input type="text" name="place-name" id="place" class="popup__input popup__input_type_card-name"
-            placeholder="Название" required
+            placeholder="Название" required minlength="2" maxlength="200" pattern="^[a-zA-Zа-яА-Я\sёЁ\-]+$"
             data-error-message="Разрешены только латинские, кириллические буквы, знаки дефиса и пробелы">
           <span class="popup__error place-error"></span>
           <input type="url" name="link" id="link" class="popup__input popup__input_type_url"

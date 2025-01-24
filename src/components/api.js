@@ -18,7 +18,7 @@ function httpGet(query) {
 }
 
 function httpPostAs(query, post_method, post_body) {
-  let req = {
+  const req = {
     method: post_method,
     headers: config.headers,
   };

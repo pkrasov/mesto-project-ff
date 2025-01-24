@@ -70,9 +70,6 @@ export const enableValidation = (selectors) => {
     document.querySelectorAll(selectors.formSelector)
   );
   formList.forEach((formElement) => {
-    formElement.addEventListener("submit", function (evt) {
-      evt.preventDefault();
-    });
     setEventListeners(formElement, selectors);
   });
 };
